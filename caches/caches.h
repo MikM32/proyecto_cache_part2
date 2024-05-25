@@ -163,6 +163,7 @@ class CacheConjuntos : Cache
     private:
         List<List<LineaCache>*> cache;
         int nVias;
+	LineaCache buffer; // Para el prefetch
         int tamConjuntos;
 
     public:
@@ -215,6 +216,15 @@ class CacheConjuntos : Cache
 
         }
 
+	void prefetch(uint32 direccion)
+        {
+            int despBloque = log2(this->tamBloques);
+            int etiqueta = direccion >> despBloque;
+
+            this->buffer.etiqueta = etiqueta;
+            this->buffer.validez = true;
+        }
+
 };
 
 class CacheCompAsoc : Cache
@@ -223,7 +233,7 @@ class CacheCompAsoc : Cache
         List<LineaCache> cache;
         LineaCache buffer; // Para el prefetch
         int nVias;
-        int curVias=0;
+        int curVias=1; // contador de vias validas o utilizadas
 
     public:
 
@@ -281,7 +291,7 @@ class CacheCompAsoc : Cache
             return flag_acierto;
         }
 
-        void prefetch(int direccion)
+        void prefetch(uint32 direccion)
         {
             int despBloque = log2(this->tamBloques);
             int etiqueta = direccion >> despBloque;
