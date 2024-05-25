@@ -4,6 +4,8 @@
 
     Profesor: Jose Canache
 
+    Link del dataset SGY: https://www.kaggle.com/datasets/dengsongmei/marine-oneline
+    
     Segunda parte del proyecto de Arquitectura del Computador:
 
         Cargar un archivo de al menos 100MB a la cache previamente realizada en la parte 1
