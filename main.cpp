@@ -162,16 +162,79 @@ using namespace std;
     #include <fcntl.h>
     #include <stdlib.h>
     #include <unistd.h>
-    #include <sys/mman.h>
     #include <sys/stat.h>
+    #include <sys/mman.h>
 
     int cache_sgy(string ruta_arch)
     {
-        //================================================
-        //==========                        ==============
-        //==========    POR IMPLEMENTAR     ==============
-        //==========                        ==============
-        //================================================
+        int fd;
+        char *byteAddr;
+        struct stat statbf;
+
+        fd = open( ruta_arch.c_str() , O_RDONLY ); // Obtiene el file descriptor del fichero
+
+        if( fd == -1 ){
+            cout << "No se pudo devolver el descriptor de archivo"<<endl;
+            exit(1);
+        }
+
+        if( fstat( fd , &statbf ) == -1 ){  // Almacena datos de la estructura en statbf
+            cout << "Error al intentar obtener informacion de la estructura de datos."<<endl;
+            exit(1);
+        }
+
+        byteAddr = (char*) mmap( NULL , statbf.st_size, PROT_READ, MAP_PRIVATE, fd, 0);  // Mapea fichero en memoria
+
+        if( byteAddr == MAP_FAILED ){
+            cout << "Hubo un error al mapear el fichero en memoria"<<endl; exit(1);
+        }
+
+        float tasa_aciertos=0;
+        int nAciertos=0, nFallos=0;
+        size_t aSize = statbf.st_size, cont=0;
+        CacheCompAsoc cache(64, 4);
+
+        while(cont < aSize)
+        {
+            //cout << "Procesando: %"<< ((float)cont/aSize)*100 << endl;
+
+            cache.prefetch(*(byteAddr+16)); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
+                                                // luego lo guarda en un buffer dentro de la cache.
+                                                // este metodo de prefetching se aprovecha de la localidad espacial para aumentar la tasa de aciertos
+            if(cache.acceso((*(byteAddr++))))
+            {
+                nAciertos++;
+            }
+            else
+            {
+                nFallos++;
+            }
+
+            cont++;
+        }
+
+        close(fd);  // Cierra File descriptor
+
+        tasa_aciertos = ((float)nAciertos / aSize)*100;
+
+        cout << "Numero total de accesos: "<< aSize<< endl;
+        cout << "Numero de aciertos: " << nAciertos << endl;
+        cout << "Numero de fallos: " << nFallos << endl;
+        if(nAciertos > nFallos)
+        {
+            cout << "El numero de aciertos es mayor al de fallos" << endl;
+        }
+        else if(nAciertos < nFallos)
+        {
+            cout << "El numero de aciertos es menor al de fallos" << endl;
+        }
+        else
+        {
+            cout << "El numero de aciertos es igual al de fallos" << endl;
+        }
+        cout << "Porcentaje de aciertos: " << tasa_aciertos <<"%" <<endl;
+
+        return nAciertos;
     }
 
 
