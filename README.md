@@ -5,6 +5,14 @@
     Profesor: Jose Canache
 
     Link del dataset SGY: https://www.kaggle.com/datasets/dengsongmei/marine-oneline
+
+    SO soportados: Windows y Linux.
+
+    Formato de uso:
+        Windows:
+            caches2.exe [RUTA_DE_ARCHIVO_A_LEER]
+        Linux:
+            ./caches2 [RUTA_DE_ARCHIVO_A_LEER]
     
     Segunda parte del proyecto de Arquitectura del Computador:
 
