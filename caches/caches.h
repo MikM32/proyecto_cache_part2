@@ -162,8 +162,8 @@ class CacheConjuntos : Cache
 {
     private:
         List<List<LineaCache>*> cache;
+        LineaCache buffer;
         int nVias;
-	LineaCache buffer; // Para el prefetch
         int tamConjuntos;
 
     public:
@@ -199,7 +199,7 @@ class CacheConjuntos : Cache
             int ind = this->cache.getValueAtIndex(indiceConjunto)->search(linea);
             if(ind < 0)
             {
-                if(!this->cache.getValueAtIndex(indiceConjunto)->isEmpty())
+                if(this->cache.getValueAtIndex(indiceConjunto)->getSize() == this->nVias)
                 {
                     this->cache.getValueAtIndex(indiceConjunto)->removeAtFirst();
                 }
@@ -208,6 +208,9 @@ class CacheConjuntos : Cache
             }
             else
             {
+                LineaCache bf  = this->cache.getValueAtIndex(indiceConjunto)->getValueAtIndex(ind);
+                this->cache.getValueAtIndex(indiceConjunto)->removeAtIndex(ind);
+                this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(bf);
                 flag_acierto=true;
             }
 
@@ -216,7 +219,7 @@ class CacheConjuntos : Cache
 
         }
 
-	void prefetch(uint32 direccion)
+        void prefetch(int direccion)
         {
             int despBloque = log2(this->tamBloques);
             int etiqueta = direccion >> despBloque;
@@ -233,7 +236,7 @@ class CacheCompAsoc : Cache
         List<LineaCache> cache;
         LineaCache buffer; // Para el prefetch
         int nVias;
-        int curVias=1; // contador de vias validas o utilizadas
+        int curVias=1;
 
     public:
 
@@ -277,11 +280,12 @@ class CacheCompAsoc : Cache
                         this->curVias++;
                         this->cache.insertAtLast(linea);
                     }
-
-
                 }
                 else
                 {
+                    LineaCache bf = this->cache.getValueAtIndex(ind);
+                    this->cache.removeAtIndex(ind);
+                    this->cache.insertAtLast(bf);
                     flag_acierto=true;
                 }
             }
@@ -291,7 +295,7 @@ class CacheCompAsoc : Cache
             return flag_acierto;
         }
 
-        void prefetch(uint32 direccion)
+        void prefetch(int direccion)
         {
             int despBloque = log2(this->tamBloques);
             int etiqueta = direccion >> despBloque;
