@@ -13,68 +13,6 @@ using namespace std;
 
 typedef unsigned int uint32;
 
-class CampoCache
-{
-    private:
-        bool validez = false;
-        int dato;
-        int etiqueta = 0;
-        int tiempo = -1;
-    public:
-
-        CampoCache()
-        {
-
-        }
-        //getters
-
-
-        int getTiempo()
-        {
-            return this->tiempo;
-        }
-        bool getValidez()
-        {
-            return this->validez;
-        }
-
-        int getEtiqueta()
-        {
-            return this->etiqueta;
-        }
-
-        int getDato()
-        {
-            return this->dato;
-        }
-
-        //setters
-
-        void setDato(int d)
-        {
-            this->dato = d;
-        }
-        void setTiempo(int t)
-        {
-            this->tiempo = t;
-        }
-        void setValidez(bool val)
-        {
-            this->validez = val;
-        }
-        void setEtiqueta(int et)
-        {
-            this->etiqueta = et;
-        }
-
-		void cambiar(bool val, int et, int tmp)
-		{
-			this->setValidez(val);
-			this->setEtiqueta(et);
-			this->setTiempo(tmp);
-		}
-};
-
 class LineaCache
 {
     public:
@@ -94,6 +32,7 @@ class Cache
         int nBloques;
         int tamBloques;
         int contador_tiempo=0;
+        LineaCache buffer;
 
     public:
 
@@ -118,7 +57,7 @@ class Cache
 class CacheDirecta : Cache
 {
     private:
-        vector<CampoCache> cache;
+        LineaCache* cache;
 
     public:
 
@@ -131,29 +70,48 @@ class CacheDirecta : Cache
         {
             this->nBloques = nBloques;
             this->tamBloques = tamBloques;
-            this->cache = vector<CampoCache>(nBloques, CampoCache());
+            this->cache = new LineaCache[nBloques];
         }
 
-        bool acceso(int direccion)
+        bool acceso(uint32 direccion)
         {
-            int etiqueta;
-            int indice;
-            int despBloque = log2(this->tamBloques);
+            uint32 etiqueta;
+            uint32 indice;
+            uint32 despBloque = log2(this->tamBloques);
 
             etiqueta = direccion >> despBloque;
             indice = etiqueta % this->nBloques;
-            if(cache[indice].getEtiqueta() == etiqueta && cache[indice].getValidez()) //Si el bit de validez es verdadero y las etiquetas coinciden
-            {
 
+            LineaCache linea;
+            linea.etiqueta = etiqueta;
+            linea.validez = true; //Si el bit de validez es verdadero y las etiquetas coinciden
+
+            if(this->buffer == linea)
+            {
                 return true;
             }
             else
             {
-                cache[indice].setEtiqueta(etiqueta);
-                cache[indice].setValidez(true);     // Pone a verdadero el bit de validez
-
+                if(cache[indice] == linea)
+                {
+                    return true;
+                }
+                else
+                {
+                    cache[indice] = linea;
+                }
             }
+
             return false;
+        }
+
+        void prefetch(uint32 direccion)
+        {
+            uint32 despBloque = log2(this->tamBloques);
+            uint32 etiqueta = direccion >> despBloque;
+
+            this->buffer.etiqueta = etiqueta;
+            this->buffer.validez = true;
         }
 };
 
@@ -162,7 +120,6 @@ class CacheConjuntos : Cache
 {
     private:
         List<List<LineaCache>*> cache;
-        LineaCache buffer;
         int nVias;
         int tamConjuntos;
 
@@ -175,6 +132,7 @@ class CacheConjuntos : Cache
 
         CacheConjuntos(int numBloques, int tamBloques, int tamConjuntos)
         {
+
             this->nVias = numBloques / tamConjuntos;
             this->nBloques = numBloques;
             this->tamBloques = tamBloques;
@@ -185,33 +143,43 @@ class CacheConjuntos : Cache
             }
         }
 
-        bool acceso(int direccion)
+        bool acceso(uint32 direccion)
         {
-            int despBloque = log2(this->tamBloques);
-            int etiqueta = direccion << despBloque;
-            int indiceConjunto = etiqueta % this->nVias;
+            direccion = direccion / this->tamBloques;
+            uint32 despBloque = log2(this->tamBloques);
+            uint32 etiqueta = direccion << despBloque;
+            uint32 indiceConjunto = etiqueta % this->nVias;
             bool flag_acierto = false;
 
             LineaCache linea;
             linea.etiqueta=etiqueta;
             linea.validez=true;
 
-            int ind = this->cache.getValueAtIndex(indiceConjunto)->search(linea);
-            if(ind < 0)
-            {
-                if(this->cache.getValueAtIndex(indiceConjunto)->getSize() == this->nVias)
-                {
-                    this->cache.getValueAtIndex(indiceConjunto)->removeAtFirst();
-                }
 
-                this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(linea);
+
+            if(this->buffer == linea)
+            {
+                flag_acierto = true;
             }
             else
             {
-                LineaCache bf  = this->cache.getValueAtIndex(indiceConjunto)->getValueAtIndex(ind);
-                this->cache.getValueAtIndex(indiceConjunto)->removeAtIndex(ind);
-                this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(bf);
-                flag_acierto=true;
+                int ind = this->cache.getValueAtIndex(indiceConjunto)->search(linea);
+                if(ind < 0)
+                {
+                    if(this->cache.getValueAtIndex(indiceConjunto)->getSize() == this->nVias)
+                    {
+                        this->cache.getValueAtIndex(indiceConjunto)->removeAtFirst();
+                    }
+
+                    this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(linea);
+                }
+                else
+                {
+                    LineaCache bf  = this->cache.getValueAtIndex(indiceConjunto)->getValueAtIndex(ind);
+                    this->cache.getValueAtIndex(indiceConjunto)->removeAtIndex(ind);
+                    this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(bf);
+                    flag_acierto=true;
+                }
             }
 
             return flag_acierto;
@@ -219,7 +187,7 @@ class CacheConjuntos : Cache
 
         }
 
-        void prefetch(int direccion)
+        void prefetch(uint32 direccion)
         {
             int despBloque = log2(this->tamBloques);
             int etiqueta = direccion >> despBloque;
@@ -234,7 +202,6 @@ class CacheCompAsoc : Cache
 {
     private:
         List<LineaCache> cache;
-        LineaCache buffer; // Para el prefetch
         int nVias;
         int curVias=1;
 

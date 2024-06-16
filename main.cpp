@@ -46,7 +46,7 @@ using namespace std;
         return message;
     }
 
-    int cache_sgy(string ruta_arch)
+    int cache_mmap_sgy(string ruta_arch)
     {
         LARGE_INTEGER archivoSize;
 
@@ -99,22 +99,26 @@ using namespace std;
         }
 
         char* byteAddr = (char*)address;
+        uint32* wordAddr = (uint32*)address;
 
-        float tasa_aciertos=0;
+        double tasa_aciertos=0;
         int nAciertos=0, nFallos=0;
         LONGLONG aSize=archivoSize.QuadPart, cont=0;
 
-        // Cache completamente asociativa
-        CacheCompAsoc cache(64, 4); // 64 vias y 4 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+        // Cache asociativa por conjuntos de 8 vias por conjunto
+        CacheConjuntos cache(128, 32, 8); // 128 bloques y 32 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+
+        cout << "Procesando un numero total de accesos de: "<< aSize<< endl;
+        cout << "......" <<endl;
 
         while(cont < aSize)
         {
             //cout << "Procesando: %"<< ((float)cont/aSize)*100 << endl;
 
-            cache.prefetch(*(byteAddr+16)); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
+            cache.prefetch((uint32)wordAddr+16); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
                                                 // luego lo guarda en un buffer dentro de la cache.
                                                 // este metodo de prefetching se aprovecha de la localidad espacial para aumentar la tasa de aciertos
-            if(cache.acceso((*(byteAddr++))))
+            if(cache.acceso((uint32)((wordAddr++))))
             {
                 nAciertos++;
             }
@@ -126,13 +130,12 @@ using namespace std;
             cont++;
         }
 
-        tasa_aciertos = ((float)nAciertos / aSize)*100;
+        tasa_aciertos = ((double)nAciertos / aSize)*100;
 
         UnmapViewOfFile(address); // Desmapea el archivo
         CloseHandle(hMap);
         CloseHandle(archivo);
 
-        cout << "Numero total de accesos: "<< aSize<< endl;
         cout << "Numero de aciertos: " << nAciertos << endl;
         cout << "Numero de fallos: " << nFallos << endl;
         if(nAciertos > nFallos)
@@ -165,7 +168,7 @@ using namespace std;
     #include <sys/stat.h>
     #include <sys/mman.h>
 
-    int cache_sgy(string ruta_arch)
+    int cache_mmap_sgy(string ruta_arch)
     {
         int fd;
         char *byteAddr;
@@ -192,16 +195,21 @@ using namespace std;
         float tasa_aciertos=0;
         int nAciertos=0, nFallos=0;
         size_t aSize = statbf.st_size, cont=0;
-        CacheCompAsoc cache(64, 4);
+
+        // Cache asociativa por conjuntos de 8 vias por conjunto
+        CacheConjuntos cache(64, 16, 8); // 64 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+
+        cout << "Procesando un numero total de accesos de: "<< aSize<< endl;
+        cout << "......" <<endl;
 
         while(cont < aSize)
         {
             //cout << "Procesando: %"<< ((float)cont/aSize)*100 << endl;
 
-            cache.prefetch(*(byteAddr+16)); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
+            cache.prefetch((uint32)wordAddr+16); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
                                                 // luego lo guarda en un buffer dentro de la cache.
                                                 // este metodo de prefetching se aprovecha de la localidad espacial para aumentar la tasa de aciertos
-            if(cache.acceso((*(byteAddr++))))
+            if(cache.acceso((uint32)((wordAddr++))))
             {
                 nAciertos++;
             }
@@ -244,7 +252,7 @@ int main(int argc, const char* argv[])
 {
     if(argc > 1)
     {
-        cache_sgy(argv[1]);
+        cache_mmap_sgy(argv[1]);
     }
     else
     {

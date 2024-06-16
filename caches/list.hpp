@@ -129,6 +129,17 @@ class List{
             this->copy(list);
         }
 
+        List(int nElems)
+        {
+            this->size = 0;
+            this->first = NULL;
+            this->last = NULL;
+            for(int i=0; i<nElems; i++)
+            {
+                this->insertAtLast(type());
+            }
+        }
+
         void copy(const List<type>& list)
         {
             this->clear();
@@ -253,14 +264,16 @@ class List{
         void insertAtLast(type value){
             Node<type> * newNode = new Node<type>(value);
             newNode->setNext(NULL);
-            newNode->setPrevious(this->last);
+
 
             if(this->size == 0){
                 this->first = newNode;
                 this->last = newNode;
+                this->last->setPrevious(this->first);
             }
             else{
                 this->last->setNext(newNode);
+                newNode->setPrevious(this->last);
                 this->last = newNode;
             }
 
