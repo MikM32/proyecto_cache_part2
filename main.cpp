@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include "caches/caches.h"
 
@@ -111,6 +112,7 @@ using namespace std;
         cout << "Procesando un numero total de accesos de: "<< aSize<< endl;
         cout << "......" <<endl;
 
+        uint32 dato_leido;
         while(cont < aSize)
         {
             //cout << "Procesando: %"<< ((float)cont/aSize)*100 << endl;
@@ -118,7 +120,7 @@ using namespace std;
             cache.prefetch((uint32)wordAddr+16); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
                                                 // luego lo guarda en un buffer dentro de la cache.
                                                 // este metodo de prefetching se aprovecha de la localidad espacial para aumentar la tasa de aciertos
-            if(cache.acceso((uint32)((wordAddr++))))
+            if(cache.acceso((uint32)((wordAddr++)), dato_leido))
             {
                 nAciertos++;
             }
@@ -153,6 +155,17 @@ using namespace std;
         cout << "Porcentaje de aciertos: " << tasa_aciertos <<"%" <<endl;
 
         return nAciertos;
+    }
+
+    int cache_nommap_sgy(string ruta_arch)
+    {
+        ifstream archivo;
+
+        archivo.open(ruta_arch);
+
+
+
+        archivo.close();
     }
 
 /*
@@ -252,7 +265,33 @@ int main(int argc, const char* argv[])
 {
     if(argc > 1)
     {
-        cache_mmap_sgy(argv[1]);
+        //cache_mmap_sgy(argv[1]);
+        ifstream a;
+        a.open(argv[1], ios::binary);
+
+        a.seekg(0, ios::end);
+        long long fin = a.tellg();
+        long long cont=0;
+
+        // Cache asociativa por conjuntos de 8 vias por conjunto
+        CacheConjuntos cache(64, 16, 8); // 64 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+        long long aciertos=0, fallos=0;
+        string dato_leido;
+        for(cont; cont < fin; cont++)
+        {
+            if(cache.acceso((uint32)cont, dato_leido, a))
+            {
+                aciertos++;
+            }
+            else
+            {
+                fallos++;
+            }
+            //cout << dato_leido << endl;
+        }
+
+        cout << aciertos<< endl;
+        cout << fallos << endl;
     }
     else
     {
