@@ -106,8 +106,8 @@ using namespace std;
         int nAciertos=0, nFallos=0;
         LONGLONG aSize=archivoSize.QuadPart, cont=0;
 
-        // Cache asociativa por conjuntos de 8 vias por conjunto
-        CacheConjuntos cache(128, 32, 8); // 128 bloques y 32 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+                // Cache completamente asociativa
+        CacheConjuntos cache(64, 16); // 64 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
 
         cout << "Procesando un numero total de accesos de: "<< aSize<< endl;
         cout << "......" <<endl;
@@ -209,20 +209,21 @@ using namespace std;
         int nAciertos=0, nFallos=0;
         size_t aSize = statbf.st_size, cont=0;
 
-        // Cache asociativa por conjuntos de 8 vias por conjunto
-        CacheConjuntos cache(64, 16, 8); // 64 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+        // Cache completamente asociativa
+        CacheCompAsoc cache(32, 16); // 32 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
 
         cout << "Procesando un numero total de accesos de: "<< aSize<< endl;
         cout << "......" <<endl;
+        uint32 dato_leido;
 
         while(cont < aSize)
         {
             //cout << "Procesando: %"<< ((float)cont/aSize)*100 << endl;
 
-            cache.prefetch((uint32)wordAddr+16); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
+            cache.prefetch(*(byteAddr+16)); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
                                                 // luego lo guarda en un buffer dentro de la cache.
                                                 // este metodo de prefetching se aprovecha de la localidad espacial para aumentar la tasa de aciertos
-            if(cache.acceso((uint32)((wordAddr++))))
+            if(cache.acceso(*(byteAddr++), dato_leido))
             {
                 nAciertos++;
             }
@@ -258,40 +259,82 @@ using namespace std;
         return nAciertos;
     }
 
+    int cache_nommap_sgy(string ruta_arch)
+    {
+        ifstream archObj;
+        archObj.open(ruta_arch, ios::binary);
 
+        archObj.seekg(0, ios::end);
+        uint32 size = archObj.tellg();
+        archObj.seekg(0);
+
+        float tasa_aciertos=0;
+        int nAciertos=0, nFallos=0;
+
+        // Cache completamente asociativa
+        CacheCompAsoc cache(32, 16); // 32 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
+
+        cout << "Procesando un numero total de accesos de: "<< size<< endl;
+        cout << "......" <<endl;
+        uint32 dato_leido;
+        uint32 cont =0;
+        char dir;
+
+        while(cont < size)
+        {
+            //cout << "Procesando: %"<< ((float)cont/aSize)*100 << endl;
+
+
+            archObj.seekg(cont+1);
+            archObj >> dir;
+            cache.prefetch(dir); // obtiene el byte que esta 16 posiciones mas adelante del actual antes de procesarlo
+                                                // luego lo guarda en un buffer dentro de la cache.
+                                                // este metodo de prefetching se aprovecha de la localidad espacial para aumentar la tasa de aciertos
+            archObj.seekg(cont);
+            archObj >> dir;
+            if(cache.acceso(dir, dato_leido))
+            {
+                nAciertos++;
+            }
+            else
+            {
+                nFallos++;
+            }
+
+            cont++;
+        }
+
+        archObj.close();
+
+        tasa_aciertos = ((float)nAciertos / size)*100;
+
+        cout << "Numero total de accesos: "<< size<< endl;
+        cout << "Numero de aciertos: " << nAciertos << endl;
+        cout << "Numero de fallos: " << nFallos << endl;
+        if(nAciertos > nFallos)
+        {
+            cout << "El numero de aciertos es mayor al de fallos" << endl;
+        }
+        else if(nAciertos < nFallos)
+        {
+            cout << "El numero de aciertos es menor al de fallos" << endl;
+        }
+        else
+        {
+            cout << "El numero de aciertos es igual al de fallos" << endl;
+        }
+        cout << "Porcentaje de aciertos: " << tasa_aciertos <<"%" <<endl;
+
+        return nAciertos;
+    }
 #endif
+
 
 int main(int argc, const char* argv[])
 {
     if(argc > 1)
     {
-        //cache_mmap_sgy(argv[1]);
-        ifstream a;
-        a.open(argv[1], ios::binary);
-
-        a.seekg(0, ios::end);
-        long long fin = a.tellg();
-        long long cont=0;
-
-        // Cache asociativa por conjuntos de 8 vias por conjunto
-        CacheConjuntos cache(64, 16, 8); // 64 bloques y 16 palabras por linea; un mayor tamaño aumenta la tasa de aciertos.
-        long long aciertos=0, fallos=0;
-        string dato_leido;
-        for(cont; cont < fin; cont++)
-        {
-            if(cache.acceso((uint32)cont, dato_leido, a))
-            {
-                aciertos++;
-            }
-            else
-            {
-                fallos++;
-            }
-            //cout << dato_leido << endl;
-        }
-
-        cout << aciertos<< endl;
-        cout << fallos << endl;
+        cache_nommap_sgy(argv[1]);
     }
     else
     {

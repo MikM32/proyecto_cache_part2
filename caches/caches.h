@@ -19,7 +19,7 @@ class LineaCache
 
         bool validez=false;
         uint32 etiqueta;
-        string dato;
+        uint32 dato;
 
         bool operator==(LineaCache& l2)
         {
@@ -144,7 +144,7 @@ class CacheConjuntos : Cache
             }
         }
 
-        bool acceso(uint32 direccion,uint32& dato) // cuando la direccion es un puntero
+        bool acceso(uint32 direccion)
         {
             direccion = direccion / this->tamBloques;
             uint32 despBloque = log2(this->tamBloques);
@@ -160,6 +160,7 @@ class CacheConjuntos : Cache
 
             if(this->buffer == linea)
             {
+
                 flag_acierto = true;
             }
             else
@@ -188,62 +189,8 @@ class CacheConjuntos : Cache
 
         }
 
-        bool acceso(uint32 direccion,string& dato, ifstream& fichObj) // cuando la direccion es una posicion en el fichero
-        {
-            direccion = direccion / this->tamBloques;
-            uint32 despBloque = log2(this->tamBloques);
-            uint32 etiqueta = direccion << despBloque;
-            uint32 indiceConjunto = etiqueta % this->nVias;
-
-            bool flag_acierto = false;
-
-            LineaCache linea;
-            linea.etiqueta=etiqueta;
-            linea.validez=true;
-
-
-
-            if(this->buffer == linea)
-            {
-                dato = buffer.dato;
-                flag_acierto = true;
-            }
-            else
-            {
-                int ind = this->cache.getValueAtIndex(indiceConjunto)->search(linea);
-                if(ind < 0)
-                {
-
-                    fichObj.seekg((size_t)direccion); // se posiciona en la direccion actual en el fichero
-                    char* strbf = new char[this->tamBloques*4]; //
-                    fichObj.read(strbf, this->tamBloques*4);
-
-                    linea.dato.assign(strbf);
-                    delete strbf;
-
-                    dato = linea.dato;
-                    if(this->cache.getValueAtIndex(indiceConjunto)->getSize() == this->nVias)
-                    {
-                        this->cache.getValueAtIndex(indiceConjunto)->removeAtFirst();
-                    }
-
-                    this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(linea);
-                }
-                else
-                {
-                    LineaCache bf  = this->cache.getValueAtIndex(indiceConjunto)->getValueAtIndex(ind);
-
-                    dato = bf.dato;
-                    this->cache.getValueAtIndex(indiceConjunto)->removeAtIndex(ind);
-                    this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(bf);
-                    flag_acierto=true;
-                }
-            }
-
-            return flag_acierto;
-
-
-        }
+        
+        
 
         void prefetch(uint32 direccion)
         {
@@ -276,7 +223,7 @@ class CacheCompAsoc : Cache
             this->tamBloques = tamBloques;
         }
 
-        bool acceso(uint32 direccion)
+        bool acceso(uint32 direccion, uint32& dato_salida)
         {
             int despBloque = log2(this->tamBloques);
             uint32 etiqueta = direccion >> despBloque;
@@ -288,6 +235,7 @@ class CacheCompAsoc : Cache
 
             if(linea == this->buffer)
             {
+                dato_salida = this->buffer.dato;
                 flag_acierto=true;
             }
             else
@@ -295,6 +243,8 @@ class CacheCompAsoc : Cache
                 int ind = this->cache.search(linea);
                 if(ind < 0)
                 {
+                    linea.dato = direccion;
+                    dato_salida = direccion;
                     if(this->curVias == this->nVias)
                     {
                         this->cache.removeAtFirst();
@@ -305,12 +255,14 @@ class CacheCompAsoc : Cache
                         this->curVias++;
                         this->cache.insertAtLast(linea);
                     }
+
                 }
                 else
                 {
                     LineaCache bf = this->cache.getValueAtIndex(ind);
                     this->cache.removeAtIndex(ind);
                     this->cache.insertAtLast(bf);
+                    dato_salida = bf.dato;
                     flag_acierto=true;
                 }
             }
