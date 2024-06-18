@@ -19,3 +19,4 @@
         Cargar un archivo de al menos 100MB a la cache previamente realizada en la parte 1
         e implementarle un algoritmo de prefetching
 
+    Al comparar las velocidades entre la funcion de lectura con mmap y con la que no usa mmap, se pudo ver que con mmap es mas rapido con un tiempo de duracion entre los 1 a 2 minutos mientras que la que no usa mmap tarda mas de 5 minutos
