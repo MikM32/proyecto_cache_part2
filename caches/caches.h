@@ -242,9 +242,8 @@ class CacheCompAsoc : Cache
 
         bool acceso(uint32 direccion, uint32& salida, char* mem_buffer)
         {
-            uint32 direccion1 = ((uint32)mem_buffer+direccion);
             int despBloque = log2(this->tamBloques);
-            uint32 etiqueta = direccion1 >> despBloque;
+            uint32 etiqueta = direccion >> despBloque;
             bool flag_acierto = false;
 
             LineaCache linea;

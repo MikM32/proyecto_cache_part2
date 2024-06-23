@@ -101,7 +101,7 @@
 
     char* getMmapPtr(const char* ruta_arch)
     {
-        int fd;
+        FILE* fd;
         char *byteAddr;
         struct stat statbf;
 
