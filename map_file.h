@@ -101,11 +101,11 @@
 
     char* getMmapPtr(const char* ruta_arch)
     {
-        FILE* fd;
+        int fd;
         char *byteAddr;
         struct stat statbf;
 
-        fd = fopen(ruta_arch, O_RDONLY);
+        (FILE*)fd = fopen(ruta_arch, O_RDONLY);
 
         if( fd == -1 ){
             cout << "No se pudo devolver el descriptor de archivo"<<endl;
