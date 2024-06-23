@@ -25,6 +25,11 @@ class LineaCache
         {
             return (this->etiqueta == l2.etiqueta) && (this->validez == l2.validez);
         }
+
+        bool operator==(const LineaCache& l2)
+        {
+            return (this->etiqueta == l2.etiqueta) && (this->validez == l2.validez);
+        }
 };
 
 class Cache
@@ -33,6 +38,8 @@ class Cache
         int nBloques;
         int tamBloques;
         int contador_tiempo=0;
+
+
         LineaCache buffer;
 
     public:
@@ -52,6 +59,8 @@ class Cache
             cout << "No hace nada"<<endl;
             return false;
         }
+
+
 
 };
 
@@ -74,7 +83,7 @@ class CacheDirecta : Cache
             this->cache = new LineaCache[nBloques];
         }
 
-        bool acceso(uint32 direccion)
+        bool acceso(uint32 direccion, uint32& salida, char* mem_buffer)
         {
             uint32 etiqueta;
             uint32 indice;
@@ -89,16 +98,20 @@ class CacheDirecta : Cache
 
             if(this->buffer == linea)
             {
+                salida = this->buffer.dato;
                 return true;
             }
             else
             {
                 if(cache[indice] == linea)
                 {
+                    salida = cache[indice].dato;
                     return true;
                 }
                 else
                 {
+                    memcpy((char*)(&linea.dato), mem_buffer+direccion*4, 4);
+                    salida = linea.dato;
                     cache[indice] = linea;
                 }
             }
@@ -106,13 +119,15 @@ class CacheDirecta : Cache
             return false;
         }
 
-        void prefetch(uint32 direccion)
+        void prefetch(uint32 direccion, char* mem_buffer)
         {
             uint32 despBloque = log2(this->tamBloques);
             uint32 etiqueta = direccion >> despBloque;
 
             this->buffer.etiqueta = etiqueta;
             this->buffer.validez = true;
+
+            memcpy((char *)&this->buffer.dato, mem_buffer+direccion*4, 4);
         }
 };
 
@@ -144,7 +159,7 @@ class CacheConjuntos : Cache
             }
         }
 
-        bool acceso(uint32 direccion)
+        bool acceso(uint32 direccion, uint32& salida, char* mem_buffer)
         {
             direccion = direccion / this->tamBloques;
             uint32 despBloque = log2(this->tamBloques);
@@ -160,7 +175,7 @@ class CacheConjuntos : Cache
 
             if(this->buffer == linea)
             {
-
+                salida = this->buffer.dato;
                 flag_acierto = true;
             }
             else
@@ -168,6 +183,8 @@ class CacheConjuntos : Cache
                 int ind = this->cache.getValueAtIndex(indiceConjunto)->search(linea);
                 if(ind < 0)
                 {
+                    memcpy((char*)&linea.dato, mem_buffer+direccion*4, 4);
+                    salida = linea.dato;
                     if(this->cache.getValueAtIndex(indiceConjunto)->getSize() == this->nVias)
                     {
                         this->cache.getValueAtIndex(indiceConjunto)->removeAtFirst();
@@ -178,6 +195,7 @@ class CacheConjuntos : Cache
                 else
                 {
                     LineaCache bf  = this->cache.getValueAtIndex(indiceConjunto)->getValueAtIndex(ind);
+                    salida = bf.dato;
                     this->cache.getValueAtIndex(indiceConjunto)->removeAtIndex(ind);
                     this->cache.getValueAtIndex(indiceConjunto)->insertAtLast(bf);
                     flag_acierto=true;
@@ -189,8 +207,6 @@ class CacheConjuntos : Cache
 
         }
 
-        
-        
 
         void prefetch(uint32 direccion)
         {
@@ -206,7 +222,7 @@ class CacheConjuntos : Cache
 class CacheCompAsoc : Cache
 {
     private:
-        List<LineaCache> cache;
+        vector<LineaCache> cache;
         int nVias;
         int curVias=1;
 
@@ -219,14 +235,16 @@ class CacheCompAsoc : Cache
 
         CacheCompAsoc(int nVias, int tamBloques)
         {
+            this->cache.push_back(LineaCache()); // auxiliar que determina si se llego al final del vector
             this->nVias = nVias;
             this->tamBloques = tamBloques;
         }
 
-        bool acceso(uint32 direccion, uint32& dato_salida)
+        bool acceso(uint32 direccion, uint32& salida, char* mem_buffer)
         {
+            uint32 direccion1 = ((uint32)mem_buffer+direccion);
             int despBloque = log2(this->tamBloques);
-            uint32 etiqueta = direccion >> despBloque;
+            uint32 etiqueta = direccion1 >> despBloque;
             bool flag_acierto = false;
 
             LineaCache linea;
@@ -235,38 +253,41 @@ class CacheCompAsoc : Cache
 
             if(linea == this->buffer)
             {
-                dato_salida = this->buffer.dato;
                 flag_acierto=true;
+                salida = this->buffer.dato;
+
             }
             else
             {
-                int ind = this->cache.search(linea);
-                if(ind < 0)
+                auto cur = find(this->cache.begin(), this->cache.end(), linea);
+                if( cur == this->cache.end())
                 {
-                    linea.dato = direccion;
-                    dato_salida = direccion;
-                    if(this->curVias == this->nVias)
+                    memcpy((char*)&linea.dato, mem_buffer+direccion*4, 4);
+                    salida = linea.dato;
+
+                    if(this->cache.size() - 1 == this->nVias)
                     {
-                        this->cache.removeAtFirst();
-                        this->cache.insertAtLast(linea);
+                        this->cache.erase(this->cache.begin());
+                        this->cache.push_back(linea);
                     }
                     else
                     {
                         this->curVias++;
-                        this->cache.insertAtLast(linea);
+                        this->cache.push_back(linea);
                     }
+
 
                 }
                 else
                 {
-                    LineaCache bf = this->cache.getValueAtIndex(ind);
-                    this->cache.removeAtIndex(ind);
-                    this->cache.insertAtLast(bf);
-                    dato_salida = bf.dato;
+                    LineaCache bf = *cur;
+                    salida = bf.dato;
+                    this->cache.erase(this->cache.begin());
+                    this->cache.push_back(bf);
                     flag_acierto=true;
+
                 }
             }
-
 
 
             return flag_acierto;
