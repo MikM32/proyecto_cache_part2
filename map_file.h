@@ -105,7 +105,7 @@
         char *byteAddr;
         struct stat statbf;
 
-        fd = (int)fopen(ruta_arch, O_RDONLY);
+        fd = open(ruta_arch, O_RDONLY);
 
         if( fd == -1 ){
             cout << "No se pudo devolver el descriptor de archivo"<<endl;
