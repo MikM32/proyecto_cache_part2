@@ -7,7 +7,7 @@
 
 using namespace std;
 
-typedef unsigned char byte;
+typedef unsigned char Byte;
 
 void ibm2ieee(float* input, int swap);
 void toibm   (long *addr, int ll);
@@ -19,14 +19,14 @@ char          asebc(char ascii);
 
 int setswap(int swap);
 
-int   i4(char* buf, int nbyte);
-short i2(char* buf, int nbyte);
-char  i1(char* buf, int nbyte);
+int   i4(char* buf, int nByte);
+short i2(char* buf, int nByte);
+char  i1(char* buf, int nByte);
 void f4(char *buf,int nbute);
 
-void si4(char* buf, int nbyte,  int i);
-void si2(char* buf,int nbyte, short i);
-void si1(char* buf, int nbyte, char i);
+void si4(char* buf, int nByte,  int i);
+void si2(char* buf,int nByte, short i);
+void si1(char* buf, int nByte, char i);
 
 
 int   swapi4(int   x);
@@ -34,7 +34,7 @@ float swapf4(float x);
 short swapi2(short x);
 int swap (int x, int type);
 
-float s4(char *buf,int nbyte);
+float s4(char *buf,int nByte);
 
 void swapCh4(char *);
 void swapCh2(char *);
@@ -59,7 +59,7 @@ void GetVectorMax(vector<double> vector, double &m_Max);
 #include <cstring>
 #include <string.h>
 
-#define swapb(x,y) {byte tmp; tmp=(x); (x)=(y); (y)=tmp;}
+#define swapb(x,y) {Byte tmp; tmp=(x); (x)=(y); (y)=tmp;}
 
 static int _swap=1;
 
@@ -73,10 +73,10 @@ int setswap(int swap)
 int swapi4(int x)
 {
 
-    byte* cbuf;
-    byte  tem;
+    Byte* cbuf;
+    Byte  tem;
 
-    cbuf=(byte*)&x;        /* assign address of input to char array */
+    cbuf=(Byte*)&x;        /* assign address of input to char array */
 
     tem=cbuf[0]; cbuf[0]=cbuf[3]; cbuf[3]=tem;
     tem=cbuf[2]; cbuf[2]=cbuf[1]; cbuf[1]=tem;
@@ -96,10 +96,10 @@ float swapf4(float x)
 short swapi2(short x)
 {
 
-     byte* cbuf;
-     byte  tem;
+     Byte* cbuf;
+     Byte  tem;
 
-     cbuf=(byte*)&x;        /* assign address of input to char array */
+     cbuf=(Byte*)&x;        /* assign address of input to char array */
 
      tem=cbuf[0]; cbuf[0]=cbuf[1]; cbuf[1]=tem;
 
@@ -111,29 +111,29 @@ short swapi2(short x)
 
 void ibm2ieee(float* input, int swap)
 {
- typedef unsigned char byte;
+ typedef unsigned char Byte;
  typedef unsigned long ulng;
 
-  byte  *cbuf,expp,tem,sign;
+  Byte  *cbuf,expp,tem,sign;
   ulng  *umantis,expll,signl;
   long *mantis;
   int  shift;
 
-  cbuf=(byte*)&input[0];        /* assign address of input to char array */
+  cbuf=(Byte*)&input[0];        /* assign address of input to char array */
   umantis=(ulng*)&input[0];     /* two differnt points to the same spot  */
   mantis =(long*)&input[0];     /* signned & unsigned                    */
 
   if(swap)
   {
-  /* now byte reverce for PC use if swap true */
+  /* now Byte reverce for PC use if swap true */
   tem=cbuf[0]; cbuf[0]=cbuf[3]; cbuf[3]=tem;
   tem=cbuf[2]; cbuf[2]=cbuf[1]; cbuf[1]=tem;
   }
 
   /* start extraction information from number */
 
-  expp=*mantis>>24;     /* get expo fro upper byte      */
-  *mantis=(*mantis)<<8; /* shift off upper byte         */
+  expp=*mantis>>24;     /* get expo fro upper Byte      */
+  *mantis=(*mantis)<<8; /* shift off upper Byte         */
   shift=1;              /* set a counter to 1           */
   while(*mantis>0 && shift<23) /* start of shifting data*/
    {
@@ -208,40 +208,40 @@ void toibm(long *addr, int ll)
 }
 
 
-void si4(char* buf, int nbyte, int i)
+void si4(char* buf, int nByte, int i)
  {
-    union { byte h[4]; int x; } u;
+    union { Byte h[4]; int x; } u;
 
     u.x=i;
 
     if(_swap) { swapb(u.h[0], u.h[3]); swapb(u.h[1], u.h[2]);}
 
-    memcpy(buf+nbyte-1, &u.x, sizeof(int));
+    memcpy(buf+nByte-1, &u.x, sizeof(int));
  }
 
-void si2(char* buf,int nbyte, short i)
+void si2(char* buf,int nByte, short i)
  {
-    union { byte h[2]; short x; } u;
+    union { Byte h[2]; short x; } u;
 
     u.x=i;
 
     if(_swap) swapb(u.h[0], u.h[1]);
 
-    memcpy(buf+nbyte-1, &u.x, sizeof(short));
+    memcpy(buf+nByte-1, &u.x, sizeof(short));
  }
 
-void si1(char* buf, int nbyte, char i)
+void si1(char* buf, int nByte, char i)
  {
-    memcpy(buf+nbyte-1,&i,sizeof(char));
+    memcpy(buf+nByte-1,&i,sizeof(char));
  }
 
 
-int i4(char* buf, int nbyte)
+int i4(char* buf, int nByte)
  {
     int i;
-    union { byte h[4]; long x; } u;
+    union { Byte h[4]; long x; } u;
 
-    memcpy(&i,buf+nbyte-1,sizeof(int));
+    memcpy(&i,buf+nByte-1,sizeof(int));
     u.x=i;
 
     if(_swap)
@@ -249,12 +249,12 @@ int i4(char* buf, int nbyte)
     return u.x;
  }
 
-short i2(char* buf, int nbyte)
+short i2(char* buf, int nByte)
  {
     short i;
-    union { byte h[2]; int x; } u;
+    union { Byte h[2]; int x; } u;
 
-    memcpy(&i,buf+nbyte-1,sizeof(short));
+    memcpy(&i,buf+nByte-1,sizeof(short));
     u.x=i;
     if(_swap)
      swapb(u.h[0], u.h[1]);
@@ -262,21 +262,21 @@ short i2(char* buf, int nbyte)
     return u.x;
  }
 
-char i1(char* buf, int nbyte)
+char i1(char* buf, int nByte)
  {
     char i;
 
-    memcpy(&i,buf+nbyte-1,sizeof(char));
+    memcpy(&i,buf+nByte-1,sizeof(char));
 
     return i;
  }
 
-float s4(char *buf,int nbyte)
+float s4(char *buf,int nByte)
 {
     float f;
-    union { byte h[4]; float x; } u;
+    union { Byte h[4]; float x; } u;
 
-    memcpy(&f,buf+nbyte-1,sizeof(float));
+    memcpy(&f,buf+nByte-1,sizeof(float));
     return f;
 }
 
