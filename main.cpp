@@ -31,7 +31,7 @@ int main(int argc, const char* argv[])
 
     cout << lector.nAciertos << endl;
     cout << "tasa de aciertos: " <<((float)(lector.nAciertos)/(nTrazas*nMuestras))*100 <<"%"<<endl;
-    cout << "Tiempo de ejecucion: " << time << endl;
+    cout << "Tiempo de ejecucion: " << time << "seg"<<endl;
 
 
     //cout << lector.GetTraceData(1)[487];
@@ -58,7 +58,7 @@ int main(int argc, const char* argv[])
 
     cout << lector.nAciertos << endl;
     cout << "tasa de aciertos: " <<((float)(lector.nAciertos)/(nTrazas*nMuestras))*100 <<"%"<<endl;
-    cout << "Tiempo de ejecucion: " << time << endl;
+    cout << "Tiempo de ejecucion: " << time << "seg"<<endl;
 
     //cout << lector.GetTraceData(1)[487];
 

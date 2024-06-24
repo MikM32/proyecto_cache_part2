@@ -101,7 +101,7 @@
     #include <sys/stat.h>
     #include <sys/mman.h>
 
-    char* getMmapPtr(const char* ruta_arch, int* fd)
+    char* getMmapPtr(const char* ruta_arch, struct stat* stats)
     {
         int fd;
         char *byteAddr;
@@ -124,6 +124,9 @@
         if( byteAddr == MAP_FAILED ){
             cout << "Hubo un error al mapear el fichero en memoria"<<endl; exit(1);
         }
+
+        *stats = statbf;
+        close(fd);
 
         return byteAddr;
 

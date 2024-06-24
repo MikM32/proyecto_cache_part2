@@ -373,7 +373,7 @@ public:
         HANDLE hFile, hMap;
 
         #elif
-        int mmap_filed;
+        struct stat statbf;
         #endif
 
 
@@ -383,14 +383,12 @@ public:
 
 CSegyRead::CSegyRead()
 {
-    cache = CacheDirecta(128, 16);
+    cache = CacheDirecta(128, 16); // Aqui se inicializa la cache de composicion directa de 128 lineas y 16 palabras por linea
     mmap_pointer = NULL;
     this->use_mmap=false;
     #if defined(__WIN32) || defined(_WIN64)
     this->hFile = NULL;
     this->hMap = NULL;
-
-    #elif
 
     #endif
     m_bDataIBMFmt = true;
@@ -471,19 +469,19 @@ const unsigned char *CSegyRead::ReadTextualHeader()
 
         return m_szTextInfo;
     }
-    else // Usando mmap
+    else // Aqui se usa mmap
     {
         if (m_bHasTextualHeader)
         {
 
-            memcpy((char*)&m_szTextInfo, this->mmap_pointer, TEXTUAL_HEADER_SIZE);
+            memcpy((char*)&m_szTextInfo, this->mmap_pointer, TEXTUAL_HEADER_SIZE); // Se copia directamente del archivo los primeros 3200 bytes
 
         }
         else
         {
 
             char* temTextInfo  = new char[3200];
-            temTextInfo = "This SEG-Y file has no 3200-byte EBCDIC textual header!";
+            temTextInfo = "Este archivo SEG-Y no tiene cabecera textual.";
             memcpy(m_szTextInfo, temTextInfo,3200);
         }
 
@@ -493,7 +491,7 @@ const unsigned char *CSegyRead::ReadTextualHeader()
 }
 
 
-const VOLUMEHEADER &CSegyRead::ReadVolumeHeader()
+const VOLUMEHEADER &CSegyRead::ReadVolumeHeader() // Aqui se lee la cabecera de volumen o binaria
 {
     unsigned long long lenth;
 
@@ -523,10 +521,10 @@ const VOLUMEHEADER &CSegyRead::ReadVolumeHeader()
 
         return m_volHead;
     }
-    else // Usando mmap
+    else // Aqui se usa a mmap
     {
         char *bf=this->mmap_pointer;
-        if (m_bHasTextualHeader)
+        if (m_bHasTextualHeader) // Si
         {
             bf = this->mmap_pointer+TEXTUAL_HEADER_SIZE;
 
@@ -552,7 +550,7 @@ const VOLUMEHEADER &CSegyRead::ReadVolumeHeader()
 
 }
 
-const TRACEHEADER &CSegyRead::ReadTraceHeader(int nIndex/*=0*/)
+const TRACEHEADER &CSegyRead::ReadTraceHeader(int nIndex/*=0*/) // Aqui se le la N-esima cabecera de traza
 {
     if(!this->use_mmap)
     {
@@ -570,7 +568,7 @@ const TRACEHEADER &CSegyRead::ReadTraceHeader(int nIndex/*=0*/)
 
         return m_traHead;
     }
-    else //usando mmap
+    else //Aqui se usa a mmap
     {
         long long lOffset = TEXTUAL_HEADER_SIZE+VOLUME_HEADER_SIZE;
         if (!m_bHasTextualHeader)
@@ -605,7 +603,17 @@ float* CSegyRead::ReadTraceData(int nIndex)
 
     m_pszData = new char[m_nSampleNum*m_nDataLenth];
     m_pData = new float[m_nSampleNum];
-    fread(m_pszData,sizeof(char),m_nSampleNum*m_nDataLenth,m_fpr);
+
+
+    if(!this->use_mmap)
+    {
+        fread(m_pszData,sizeof(char),m_nSampleNum*m_nDataLenth,m_fpr);
+    }
+    else // Se usa mmap
+    {
+        memcpy(m_pszData, this->mmap_pointer+lOffset, m_nSampleNum*m_nDataLenth);
+    }
+
 
 
     for (int i=0;i<m_nSampleNum;i++)
@@ -625,7 +633,7 @@ float* CSegyRead::ReadTraceData(int nIndex)
 
 float *formatTransform(const char *szBuff,int len,int format)
 {
-    CacheCompAsoc cache(128, 1);
+
     float *pData = new float[len];
     switch (format)
     {
@@ -636,7 +644,6 @@ float *formatTransform(const char *szBuff,int len,int format)
 
             uint32 x;
             //memcpy((char*)&x,szBuff+i*4,4);
-            cache.acceso(i, x, (char*)szBuff);
 
             float z = (float)x;
             ibm2ieee(&z,1);
@@ -695,7 +702,6 @@ float* CSegyRead::GetTraceData(int nIndex )
     if (!m_bHasTextualHeader)
         lOffset =VOLUME_HEADER_SIZE;
     lOffset +=(nIndex-1)*(TRACE_HEADER_SIZE+bufLen)+TRACE_HEADER_SIZE;
-    fseek(m_fpr,lOffset,0);
 
     if(!this->use_mmap)
     {
@@ -725,10 +731,11 @@ float* CSegyRead::GetTraceData(int nIndex )
 
             cache.prefetch(i+1, szBuff);
 
-            if(cache.acceso(i, (uint32&)x, szBuff))
+            if(cache.acceso(i, (uint32&)x, szBuff)) // Aqui se hace el acceso a la cache
             {
                 nAciertos++;
             }
+
             ibm2ieee(&x,1);
             m_pData[i] = x;
         }
@@ -892,7 +899,7 @@ bool CSegyRead::OpenFile(const char *csReadFile, bool use_mmap=false)
         #if defined(__WIN32) || defined(_WIN64)
         this->mmap_pointer = getMmapPtr(csReadFile, &this->hFile, &this->hMap);
         #else
-        this->mmap_pointer = getMmapPtr(csReadFile, &this->mmap_filed);
+        this->mmap_pointer = getMmapPtr(csReadFile, &this->statbf);
         #endif
     }
 
@@ -915,7 +922,7 @@ void CSegyRead::closeFile()
     }
 
     #else
-    close(mmap_filed);
+    munmap(this->mmap_pointer, this->statbf.st_size);
     #endif
     if (m_fpr != NULL)
     {
