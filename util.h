@@ -381,6 +381,7 @@ Only integer shifting and masking are used.
 Credits:     CWP: Brian Sumner
 ***********************************************************************/
 {
+    //register
     int fconv, fmant, i, t;
 
     for (i=0;i<n;++i) {

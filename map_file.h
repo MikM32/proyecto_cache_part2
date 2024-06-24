@@ -25,7 +25,7 @@
         return message;
     }
 
-    char* getMmapPtr(const char* ruta_arch)
+    char* getMmapPtr(const char* ruta_arch, HANDLE* hFile, HANDLE* Map)
     {
         LARGE_INTEGER archivoSize;
 
@@ -77,6 +77,8 @@
             return NULL;
         }
 
+        *hFile = archivo;
+        *Map = hMap;
         char* byteAddr = (char*)address;
 
         return byteAddr;
@@ -99,7 +101,7 @@
     #include <sys/stat.h>
     #include <sys/mman.h>
 
-    char* getMmapPtr(const char* ruta_arch)
+    char* getMmapPtr(const char* ruta_arch, int* fd)
     {
         int fd;
         char *byteAddr;

@@ -369,6 +369,14 @@ public:
         char* mmap_pointer;
         bool use_mmap;
 
+        #if defined(__WIN32) || defined(_WIN64)
+        HANDLE hFile, hMap;
+
+        #elif
+        int mmap_filed;
+        #endif
+
+
 };
 
 
@@ -378,6 +386,13 @@ CSegyRead::CSegyRead()
     cache = CacheDirecta(128, 16);
     mmap_pointer = NULL;
     this->use_mmap=false;
+    #if defined(__WIN32) || defined(_WIN64)
+    this->hFile = NULL;
+    this->hMap = NULL;
+
+    #elif
+
+    #endif
     m_bDataIBMFmt = true;
     m_bDataWS = true;
     m_bEBText = true;
@@ -712,10 +727,6 @@ float* CSegyRead::GetTraceData(int nIndex )
 
             if(cache.acceso(i, (uint32&)x, szBuff))
             {
-                if(i == 417)
-                {
-                    x;
-                }
                 nAciertos++;
             }
             ibm2ieee(&x,1);
@@ -848,7 +859,7 @@ bool CSegyRead::OpenFile(const char *csReadFile, bool use_mmap=false)
 
     this->use_mmap = use_mmap;
 
-    if(!use_mmap)
+    if(!this->use_mmap)
     {
         m_fpr = fopen(csReadFile,"rb");
 
@@ -878,13 +889,34 @@ bool CSegyRead::OpenFile(const char *csReadFile, bool use_mmap=false)
     }
     else
     {
-        this->mmap_pointer = getMmapPtr(csReadFile);
+        #if defined(__WIN32) || defined(_WIN64)
+        this->mmap_pointer = getMmapPtr(csReadFile, &this->hFile, &this->hMap);
+        #else
+        this->mmap_pointer = getMmapPtr(csReadFile, &this->mmap_filed);
+        #endif
     }
 
 }
 
 void CSegyRead::closeFile()
 {
+    this->nAciertos = 0;
+
+    #if defined(__WIN32) || defined(_WIN64)
+    if(hFile != NULL)
+    {
+        CloseHandle(hFile);
+        hFile = NULL;
+    }
+    if(hMap != NULL)
+    {
+        CloseHandle(hMap);
+        hMap = NULL;
+    }
+
+    #else
+    close(mmap_filed);
+    #endif
     if (m_fpr != NULL)
     {
 
